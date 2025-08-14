@@ -87,6 +87,8 @@ export default function MedicalTranscriptionApp() {
 
   // Enhanced session management
   const startNewSessionAndRecording = async () => {
+    console.log("Starting new session and recording...")
+    
     // Complete current session if exists
     if (currentSession && currentSession.status === "active") {
       sessionManager.completeSession(currentSession.id)
@@ -118,11 +120,15 @@ export default function MedicalTranscriptionApp() {
       setError(null)
       setSOAPError(null)
 
+      console.log("Checking speech support...")
+      console.log("Speech supported:", speechSupported)
+      
       if (!speechSupported) {
         setError("Speech recognition is not supported in this browser. Please use Chrome or Edge.")
         return
       }
 
+      console.log("Requesting microphone access...")
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -131,8 +137,10 @@ export default function MedicalTranscriptionApp() {
         },
       })
 
+      console.log("Microphone access granted:", stream)
       streamRef.current = stream
 
+      console.log("Setting up audio context...")
       const audioContext = new AudioContext()
       const analyser = audioContext.createAnalyser()
       const source = audioContext.createMediaStreamSource(stream)
@@ -143,6 +151,7 @@ export default function MedicalTranscriptionApp() {
       audioContextRef.current = audioContext
       analyserRef.current = analyser
 
+      console.log("Setting up media recorder...")
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: "audio/webm;codecs=opus",
       })
@@ -156,9 +165,12 @@ export default function MedicalTranscriptionApp() {
       }
 
       mediaRecorder.start(1000)
+      console.log("Media recorder started")
 
-      const speechStarted = speechService.start(
+      console.log("Starting speech service...")
+      const speechStarted = await speechService.start(
         (result: TranscriptionResult) => {
+          console.log("Speech result received:", result)
           if (result.isFinal) {
             const newTranscription = transcription + " " + result.text
             setTranscription(newTranscription)
@@ -175,9 +187,12 @@ export default function MedicalTranscriptionApp() {
           }
         },
         (error: string) => {
+          console.error("Speech service error:", error)
           setError(error)
         },
       )
+
+      console.log("Speech service started:", speechStarted)
 
       if (!speechStarted) {
         throw new Error("Failed to start speech recognition")
@@ -185,9 +200,10 @@ export default function MedicalTranscriptionApp() {
 
       setIsRecording(true)
       monitorAudioLevel()
+      console.log("Recording started successfully!")
     } catch (err) {
-      setError("Failed to access microphone or start speech recognition. Please check permissions.")
       console.error("Error starting recording:", err)
+      setError(`Failed to access microphone or start speech recognition: ${err instanceof Error ? err.message : String(err)}. Please check permissions.`)
     }
   }
 
@@ -378,8 +394,9 @@ Please transfer this information to your EMR system (Epic/Cerner) as needed.
         {/* Session Management Bar */}
         <Card>
           <CardContent className="py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+            <div className="flex flex-col items-center space-y-4">
+              {/* Main Button Row - Centered */}
+              <div className="flex items-center justify-center">
                 <Button
                   onClick={startNewSessionAndRecording}
                   className="bg-slate-600 hover:bg-slate-700"
@@ -388,9 +405,12 @@ Please transfer this information to your EMR system (Epic/Cerner) as needed.
                   <UserPlus className="h-4 w-4 mr-2" />
                   New Patient Session
                 </Button>
+              </div>
 
-                <Separator orientation="vertical" className="h-6" />
-                {currentSession && (
+              {/* Session Status Row - Centered */}
+              {currentSession && (
+                <div className="flex items-center justify-center gap-4">
+                  <Separator orientation="horizontal" className="w-32" />
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="bg-green-100 text-green-800">
                       <Activity className="h-3 w-3 mr-1" />
@@ -400,11 +420,13 @@ Please transfer this information to your EMR system (Epic/Cerner) as needed.
                       Started: {new Date(currentSession.startTime).toLocaleTimeString()}
                     </span>
                   </div>
-                )}
-              </div>
+                  <Separator orientation="horizontal" className="w-32" />
+                </div>
+              )}
 
+              {/* Action Buttons Row - Centered */}
               {currentSession && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center gap-2">
                   {transcription.trim() && (
                     <Button onClick={downloadTranscript} className="bg-blue-600 hover:bg-blue-700 text-white">
                       <Download className="h-4 w-4 mr-2" />
@@ -424,132 +446,134 @@ Please transfer this information to your EMR system (Epic/Cerner) as needed.
           </CardContent>
         </Card>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-          {/* Recording Controls */}
-          <div className="xl:col-span-1">
-            <Card>
-              <CardHeader className="text-center">
-                <CardTitle className="flex items-center justify-center gap-2">
-                  <Mic className="h-5 w-5" />
-                  Audio Capture
-                </CardTitle>
-                <CardDescription>
-                  {isRecording
-                    ? "Recording in progress"
-                    : currentSession
-                      ? "Session active - Ready to record"
-                      : "Start new session to begin"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {!speechSupported && (
-                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                    <div className="flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4 text-yellow-600" />
-                      <p className="text-sm text-yellow-700">Speech recognition requires Chrome or Edge browser</p>
+        {/* Main Content - Improved Centering */}
+        <div className="flex justify-center">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl w-full">
+            {/* Recording Controls - Left Side */}
+            <div className="lg:col-span-1">
+              <Card>
+                <CardHeader className="text-center">
+                  <CardTitle className="flex items-center justify-center gap-2">
+                    <Mic className="h-5 w-5" />
+                    Audio Capture
+                  </CardTitle>
+                  <CardDescription>
+                    {isRecording
+                      ? "Recording in progress"
+                      : currentSession
+                        ? "Session active - Ready to record"
+                        : "Start new session to begin"}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {!speechSupported && (
+                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-yellow-600" />
+                        <p className="text-sm text-yellow-700">Speech recognition requires Chrome or Edge browser</p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {error && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-sm text-red-600">{error}</p>
-                  </div>
-                )}
+                  {error && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-sm text-red-600">{error}</p>
+                    </div>
+                  )}
 
-                {currentSession && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Badge
-                        variant="secondary"
-                        className={isRecording ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800"}
-                      >
-                        <div
-                          className={`w-2 h-2 rounded-full mr-2 ${isRecording ? "bg-red-500 animate-pulse" : "bg-blue-500"}`}
-                        ></div>
-                        {isRecording ? "Recording Active" : "Session Ready"}
-                      </Badge>
+                  {currentSession && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Badge
+                          variant="secondary"
+                          className={isRecording ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800"}
+                        >
+                          <div
+                            className={`w-2 h-2 rounded-full mr-2 ${isRecording ? "bg-red-500 animate-pulse" : "bg-blue-500"}`}
+                          ></div>
+                          {isRecording ? "Recording Active" : "Session Ready"}
+                        </Badge>
+                        {isRecording && (
+                          <span className="text-sm text-gray-500">Level: {Math.round(audioLevel * 100)}%</span>
+                        )}
+                      </div>
+
+                      {isRecording && <AudioVisualizer audioLevel={audioLevel} />}
+
                       {isRecording && (
-                        <span className="text-sm text-gray-500">Level: {Math.round(audioLevel * 100)}%</span>
+                        <Button onClick={stopRecording} size="lg" variant="destructive" className="w-full">
+                          <Square className="h-4 w-4 mr-2" />
+                          Stop Recording
+                        </Button>
+                      )}
+
+                      {transcription && !isRecording && (
+                        <div className="space-y-2">
+                          <Button
+                            onClick={clearTranscription}
+                            variant="outline"
+                            size="sm"
+                            className="w-full bg-transparent"
+                          >
+                            Clear Transcription
+                          </Button>
+                          <Button
+                            onClick={regenerateSOAP}
+                            variant="outline"
+                            size="sm"
+                            className="w-full bg-transparent"
+                            disabled={isGeneratingSOAP}
+                          >
+                            <RefreshCw className={`h-4 w-4 mr-2 ${isGeneratingSOAP ? "animate-spin" : ""}`} />
+                            Regenerate SOAP
+                          </Button>
+                        </div>
                       )}
                     </div>
+                  )}
 
-                    {isRecording && <AudioVisualizer audioLevel={audioLevel} />}
-
-                    {isRecording && (
-                      <Button onClick={stopRecording} size="lg" variant="destructive" className="w-full">
-                        <Square className="h-4 w-4 mr-2" />
-                        Stop Recording
-                      </Button>
-                    )}
-
-                    {transcription && !isRecording && (
-                      <div className="space-y-2">
-                        <Button
-                          onClick={clearTranscription}
-                          variant="outline"
-                          size="sm"
-                          className="w-full bg-transparent"
-                        >
-                          Clear Transcription
-                        </Button>
-                        <Button
-                          onClick={regenerateSOAP}
-                          variant="outline"
-                          size="sm"
-                          className="w-full bg-transparent"
-                          disabled={isGeneratingSOAP}
-                        >
-                          <RefreshCw className={`h-4 w-4 mr-2 ${isGeneratingSOAP ? "animate-spin" : ""}`} />
-                          Regenerate SOAP
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {isGeneratingSOAP && (
-                  <div className="flex items-center justify-center gap-2 text-sm text-blue-600">
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    Analyzing conversation...
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* SOAP Notes and Transcription */}
-          <div className="xl:col-span-3">
-            {currentSession ? (
-              <TranscriptionPanel
-                transcription={transcription}
-                interimTranscription={interimTranscription}
-                isRecording={isRecording}
-                soapNote={soapNote}
-                isGeneratingSOAP={isGeneratingSOAP}
-                soapError={soapError}
-              />
-            ) : (
-              <Card>
-                <CardContent className="py-12">
-                  <div className="text-center text-gray-500">
-                    <Mic className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <h3 className="text-lg font-medium mb-2">Ready to Begin</h3>
-                    <p className="text-sm mb-4">
-                      Click "New Patient Session" to automatically start recording and generating SOAP notes
-                    </p>
-                    <Button
-                      onClick={() => setShowSOAPStructure(true)}
-                      variant="outline"
-                      className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                    >
-                      Learn about SOAP Notes
-                    </Button>
-                  </div>
+                  {isGeneratingSOAP && (
+                    <div className="flex items-center justify-center gap-2 text-sm text-blue-600">
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Analyzing conversation...
+                    </div>
+                  )}
                 </CardContent>
               </Card>
-            )}
+            </div>
+
+            {/* SOAP Notes and Transcription - Right Side */}
+            <div className="lg:col-span-2">
+              {currentSession ? (
+                <TranscriptionPanel
+                  transcription={transcription}
+                  interimTranscription={interimTranscription}
+                  isRecording={isRecording}
+                  soapNote={soapNote}
+                  isGeneratingSOAP={isGeneratingSOAP}
+                  soapError={soapError}
+                />
+              ) : (
+                <Card>
+                  <CardContent className="py-16">
+                    <div className="text-center text-gray-500">
+                      <Mic className="h-16 w-16 mx-auto mb-6 text-gray-300" />
+                      <h3 className="text-xl font-medium mb-3">Ready to Begin</h3>
+                      <p className="text-base mb-6 max-w-md mx-auto">
+                        Click "New Patient Session" to automatically start recording and generating SOAP notes
+                      </p>
+                      <Button
+                        onClick={() => setShowSOAPStructure(true)}
+                        variant="outline"
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                      >
+                        Learn about SOAP Notes
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </div>
         </div>
       </div>
